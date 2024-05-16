@@ -10,7 +10,7 @@ const client = new Client({
       remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html'
     },
     authStrategy: new LocalAuth()
-});
+}); 
 
 client.on('ready', () => {
     console.log('Client is ready!');
@@ -20,6 +20,8 @@ client.on('qr', qr => {
     qrcode.generate(qr, {small: true});
 });
 
-initMessages(client);
+initMessages(client, message);
 
 client.initialize();
+
+console.log('Initialization completed. Waiting for events...');

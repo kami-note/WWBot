@@ -1,33 +1,23 @@
 const fs = require('fs');
 
-// Read the JSON file
 const jsonString = fs.readFileSync('public/messages.json', 'utf-8');
-
-// Parse the JSON string with a reviver function
-const jsonMessages = JSON.parse(jsonString, (key, value) => {
-    // Ensure all values are treated as strings
-    if (typeof value !== 'string') {
-        return String(value);
-    }
-    return value;
-});
-
-const message = jsonMessages;
+const jsonMessages = JSON.parse(jsonString);
 
 function initMessages(client) {
-    client.on('message_create', message => {
-        switch (message.body) {
-            case 'ping':
-                client.sendMessage(message.from, 'pong');
-                break;
-            case 'Bom dia':
-                client.sendMessage(message.from, message.wellcome)
-                break;
-            default:
-                client.sendMessage(message.from, message.callhumanattendant)
-                break;
+    client.on('message_create', receivedMessage => {
+        if (receivedMessage != null) {
+            switch (receivedMessage.body) {
+                case 'ping':
+                    client.sendMessage(receivedMessage.from, 'pong');
+                    break;
+                case 'Bom dia':
+                    client.sendMessage(receivedMessage.from, jsonMessages.wellcome);
+                    break;
+                default:
+                    break;
+            }
         }
     });
 }
 
-module.exports = { message, initMessages };
+module.exports = { initMessages };
