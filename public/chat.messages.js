@@ -11,13 +11,10 @@ function initMessages(client) {
     client.on('message_create', receivedMessage => {
         if (receivedMessage != null) {
             const receivedBody = formatMessage(receivedMessage.body);
-            console.log('Received message:', receivedBody);
             const response = jsonMessages[receivedBody];
             if (response) {
-                console.log('Sending response:', response);
                 client.sendMessage(receivedMessage.from, response);
             } else if (response === null){
-                console.log('No response found for:', receivedBody);
                 client.sendMessage(receivedMessage.from, "Desculpe, não entendi a sua pergunta.");
             }
         }
