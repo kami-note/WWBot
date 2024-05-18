@@ -1,27 +1,27 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const Database = require('./database');
+const MessageHandler = require('./messageHandler');
+const { WhatsAppClient, LocalAuth } = require('./whatsappClient');
 
-const { message, initMessages } = require('./public/chat.messages.js');
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'querycompany'
+};
 
-const client = new Client({
-    webVersion: '2.2409.2',
-    webVersionCache: {
-      type: 'remote',
-      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html'
-    },
-    authStrategy: new LocalAuth()
-}); 
+const db = new Database(dbConfig);
+const clientConfig = {
+  webVersion: '2.2409.2',
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html'
+  },
+  authStrategy: new LocalAuth()
+};
+const client = new WhatsAppClient(clientConfig);
+const messageHandler = new MessageHandler(client.client, db);
 
-client.on('ready', () => {
-    console.log('Client is ready!');
-});
-
-client.on('qr', qr => {
-    qrcode.generate(qr, {small: true});
-});
-
-initMessages(client, message);
-
-client.initialize();
-
-console.log('Initialization completed. Waiting for events...');
+(async () => {
+  await db.connect();
+  client.initialize(messageHandler);
+})();
