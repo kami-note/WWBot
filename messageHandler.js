@@ -52,6 +52,42 @@ class MessageHandler {
     handleThirdStage(userId, message) {
         
         this.sendMessage(userId, "Você está no terceiro estágio!");
+
+        this.sendMessage(userId, `Vamos começar com as suas dúvidas, segue a lista de perguntas frequentes:
+        1- Quem realiza essas inspeções e aprovações?
+        2- Todas as regulamentações e normas estão sendo seguidas?
+        3- Qual é o procedimento para solicitar alterações?(Chamar atendente)
+        4- Estamos dentro do orçamento planejado?
+        5- Quais foram as variações de custo e por que ocorreram?
+        6- Há despesas adicionais previstas?`);
+
+        const response = message.body;
+        switch (response) {
+            case "1":
+                this.sendMessage(userId, `Maicon Küster, realizas as inspeções de seguranças e 
+                Flavio Kotaka, realizas as aprovações do projeto.`);
+                break;  
+            case "2":
+                this.sendMessage(userId, `Sim, todas as regulamentações e normas estão sendo seguidas rigorosamente.
+                Temos uma equipe dedicada para garantir a conformidade com todas as exigências legais e de segurança. 
+                Além disso, realizamos inspeções regulares para manter a qualidade e a segurança do projeto.`);
+                break;
+            case "3":
+                this.sendMessage(userId, `Um momento, vamos te passar para um de nossos atendentes disponiveis.`);
+                break;
+            case "4":
+                this.sendMessage(userId, `Sim, estamos dentro do orçamento planejado. Monitoramos continuamente os custos e ajustamos conforme necessário para garantir que não haja excedentes. Se houver qualquer variação, informaremos imediatamente.`);
+                break;
+            case "5":
+                this.sendMessage(userId,`As do Job.`);
+                break;
+            case "6":
+                this.sendMessage(userId, `Não.`);
+                break;
+            default:
+                this.sendMessage(userId, `Insira uma alternativa válida.`);
+                break;
+        }
         
     }
 
