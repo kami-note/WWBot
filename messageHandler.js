@@ -1,49 +1,129 @@
 class MessageHandler {
     constructor(client, database) {
-      this.client = client;
-      this.database = database;
-      this.welcomedUsers = new Set();
-      this.awaitingCPFUsers = new Set();
-      this.client.on('message', this.handleMessage.bind(this));
+        this.client = client;
+        this.database = database;
+        this.users = new Map(); 
+        this.stages = {
+            WELCOME: 1,
+            CPF: 2,
+            THIRD: 3,
+            
+        };
+        this.processedMessages = new Set(); 
+        this.client.on('message', (message) => {
+            console.log('Nova mensagem recebida:', message);
+            const messageKey = `${message.from}_${message.body}`; 
+        
+            
+            if (this.processedMessages.has(messageKey)) {
+                console.log('Mensagem duplicada detectada. Descartando.');
+                return;
+            }
+        
+            
+            this.processedMessages.add(messageKey);
+            this.handleMessage(message);
+        });
     }
-  
-    async handleMessage(message) {
-        const senderId = message.from;
-        if (!this.welcomedUsers.has(senderId)) {
-          // Marcando o usuário como recebido após o envio da mensagem de boas-vindas
-          this.welcomedUsers.add(senderId);
-          await this.sendWelcomeMessage(senderId);
-          // Adicionando usuário à lista de aguardando CPF
-          this.awaitingCPFUsers.add(senderId);
-        } else if (this.awaitingCPFUsers.has(senderId)) {
-          // Removendo usuário da lista de aguardando CPF após processamento do CPF
-          this.awaitingCPFUsers.delete(senderId);
-          await this.handleCPF(senderId, message.body);
-        }
+
+    
+
+    handleWelcomeMessage(userId) {
+        this.sendWelcomeMessage(userId);
+        this.users.set(userId, this.stages.CPF);
     }
-  
-    async sendWelcomeMessage(userId) {
-      const user = await this.client.getContactById(userId);
-      const displayName = user ? user.name || 'Usuário' : 'Usuário';
-      const welcomeMessage = `Olá, ${displayName}! Bem-vindo ao nosso chat. Por favor, digite o seu CPF.`;
-      await this.client.sendMessage(userId, welcomeMessage);
-    }
-  
+
     async handleCPF(userId, cpf) {
-      try {
-        const { results } = await this.database.query('SELECT name FROM users WHERE cpf = ?', [cpf]);
-        if (results.length > 0) {
-          const userName = results[0].name;
-          await this.client.sendMessage(userId, `CPF recebido com sucesso! Olá, ${userName}. Como podemos ajudar você?`);
-        } else {
-          await this.client.sendMessage(userId, 'CPF não encontrado. Por favor, forneça um CPF válido.');
+        try {
+            const userName = await this.getUserNameFromCPF(cpf);
+            if (userName) {
+                this.sendMessage(userId, `CPF recebido com sucesso! Olá, ${userName}. Digite o próximo passo.`);
+                
+                this.users.set(userId, this.stages.THIRD);
+            } else {
+                this.sendMessage(userId, 'CPF não encontrado. Por favor, forneça um CPF válido.');
+            }
+        } catch (error) {
+            console.error('Erro ao consultar o banco de dados:', error);
+            this.sendMessage(userId, 'Ocorreu um erro ao consultar o CPF. Por favor, tente novamente mais tarde.');
         }
-      } catch (error) {
-        console.error('Erro ao consultar o banco de dados:', error);
-        await this.client.sendMessage(userId, 'Ocorreu um erro ao consultar o CPF. Por favor, tente novamente mais tarde.');
-      }
     }
-  }
-  
-  module.exports = MessageHandler;
-  
+
+    handleThirdStage(userId, message) {
+        
+        this.sendMessage(userId, "Você está no terceiro estágio!");
+        
+    }
+
+    
+
+    sendWelcomeMessage(userId) {
+        const displayName = this.getUserName(userId);
+        const welcomeMessage = `Olá, ${displayName}! Bem-vindo ao nosso chat. Por favor, digite o seu CPF.`;
+        this.sendMessage(userId, welcomeMessage);
+    }
+
+    sendMessage(userId, message) {
+        this.client.sendMessage(userId, message);
+    }
+
+    
+
+    async getUserNameFromCPF(cpf) {
+        try {
+            const { results } = await this.database.query('SELECT name FROM users WHERE cpf = ?', [cpf]);
+            return results.length > 0 ? results[0].name : null;
+        } catch (error) {
+            console.error('Erro ao consultar o banco de dados:', error);
+            throw error;
+        }
+    }
+
+    
+
+    getUserName(userId) {
+        const user = this.client.getContactById(userId);
+        return user ? user.name || 'Usuário' : 'Usuário';
+    }
+
+    logMessage(message) {
+        const timestamp = new Date().toISOString();
+        const logEntry = `${timestamp}: From: ${message.from}, Body: ${message.body}\n`;
+        fs.appendFile('message_log.txt', logEntry, (err) => {
+            if (err) {
+                console.error('Erro ao registrar mensagem no log:', err);
+            }
+        });
+    }
+
+    
+
+    handleMessage(message) {
+        const senderId = message.from;
+    
+        if (!this.users.has(senderId)) {
+            console.log('Usuário não recebeu as boas-vindas ainda. Tratando a mensagem como uma mensagem de boas-vindas.');
+            this.handleWelcomeMessage(senderId);
+        } else {
+            console.log('Usuário está em um estágio interativo. Tratando a mensagem de acordo com o estágio atual.');
+            const stage = this.users.get(senderId);
+            switch (stage) {
+                case this.stages.CPF:
+                    console.log('Tratando mensagem para o estágio do CPF.');
+                    this.handleCPF(senderId, message.body);
+                    break;
+                case this.stages.THIRD:
+                    console.log('Tratando mensagem para o terceiro estágio.');
+                    this.handleThirdStage(senderId, message.body);
+                    break;
+                
+                default:
+                    break;
+            }
+        }
+        
+        this.logMessage(message);
+    }
+}
+
+module.exports = MessageHandler;
