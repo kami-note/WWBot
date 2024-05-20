@@ -1,32 +1,29 @@
+const {MessageMedia} = require('whatsapp-web.js'); 
+
+
 class MessageHandler {
     constructor(client, database) {
         this.client = client;
         this.database = database;
-        this.users = new Map(); 
+        this.users = new Map();
         this.stages = {
             WELCOME: 1,
             CPF: 2,
             THIRD: 3,
-            
         };
-        this.processedMessages = new Set(); 
+        this.processedMessages = new Set();
         this.client.on('message', (message) => {
-            console.log('Nova mensagem recebida:', message);
-            const messageKey = `${message.from}_${message.body}`; 
-        
-            
+            const messageKey = `${message.from}_${message.body}`;
+
             if (this.processedMessages.has(messageKey)) {
                 console.log('Mensagem duplicada detectada. Descartando.');
                 return;
             }
-        
-            
+
             this.processedMessages.add(messageKey);
             this.handleMessage(message);
         });
     }
-
-    
 
     handleWelcomeMessage(userId) {
         this.sendWelcomeMessage(userId);
@@ -37,8 +34,14 @@ class MessageHandler {
         try {
             const userName = await this.getUserNameFromCPF(cpf);
             if (userName) {
-                this.sendMessage(userId, `CPF recebido com sucesso! Olá, ${userName}. Digite o próximo passo.`);
-                
+                this.sendMessage(userId, `CPF recebido com sucesso! Olá, ${userName}.`);
+                this.sendMessage(userId, `Insira uma alternativa válida. Por favor, escolha uma das opções fornecidas:
+                1- Quem realiza essas inspeções e aprovações?
+                2- Todas as regulamentações e normas estão sendo seguidas?
+                3- Qual é o procedimento para solicitar alterações? (Chamar atendente)
+                4- Estamos dentro do orçamento planejado?
+                5- Quais foram as variações de custo e por que ocorreram?
+                6- Há despesas adicionais previstas?`);
                 this.users.set(userId, this.stages.THIRD);
             } else {
                 this.sendMessage(userId, 'CPF não encontrado. Por favor, forneça um CPF válido.');
@@ -49,49 +52,54 @@ class MessageHandler {
         }
     }
 
-    handleThirdStage(userId, message) {
-        
-        this.sendMessage(userId, "Você está no terceiro estágio!");
-
-        this.sendMessage(userId, `Vamos começar com as suas dúvidas, segue a lista de perguntas frequentes:
-        1- Quem realiza essas inspeções e aprovações?
-        2- Todas as regulamentações e normas estão sendo seguidas?
-        3- Qual é o procedimento para solicitar alterações?(Chamar atendente)
-        4- Estamos dentro do orçamento planejado?
-        5- Quais foram as variações de custo e por que ocorreram?
-        6- Há despesas adicionais previstas?`);
-
+    async handleThirdStage(userId, message) {
         const response = message.body;
+        let reply;
         switch (response) {
             case "1":
-                this.sendMessage(userId, `Maicon Küster, realizas as inspeções de seguranças e 
-                Flavio Kotaka, realizas as aprovações do projeto.`);
-                break;  
+                reply = `Maicon Küster realiza as inspeções de segurança e Flavio Kotaka realiza as aprovações do projeto.`;
+                this.sendMessage(userId, reply);
+                break;
             case "2":
-                this.sendMessage(userId, `Sim, todas as regulamentações e normas estão sendo seguidas rigorosamente.
-                Temos uma equipe dedicada para garantir a conformidade com todas as exigências legais e de segurança. 
-                Além disso, realizamos inspeções regulares para manter a qualidade e a segurança do projeto.`);
+                reply = `Sim, todas as regulamentações e normas estão sendo seguidas rigorosamente. Temos uma equipe dedicada para garantir a conformidade com todas as exigências legais e de segurança. Além disso, realizamos inspeções regulares para manter a qualidade e a segurança do projeto.`;
+                this.sendMessage(userId, reply);
                 break;
             case "3":
-                this.sendMessage(userId, `Um momento, vamos te passar para um de nossos atendentes disponiveis.`);
+                reply = `Um momento, vamos te passar para um de nossos atendentes disponíveis.`;
+                this.sendMessage(userId, reply);
                 break;
             case "4":
-                this.sendMessage(userId, `Sim, estamos dentro do orçamento planejado. Monitoramos continuamente os custos e ajustamos conforme necessário para garantir que não haja excedentes. Se houver qualquer variação, informaremos imediatamente.`);
+                reply = `Sim, estamos dentro do orçamento planejado. Monitoramos continuamente os custos e ajustamos conforme necessário para garantir que não haja excedentes. Se houver qualquer variação, informaremos imediatamente.`;
+
+                // Primeiro, envie a mensagem de texto
+                this.sendMessage(userId, reply);
+
+                // Em seguida, envie a mídia com a legenda
+                const media = await MessageMedia.fromFilePath('construcao.png');
+                this.sendMessage(userId, media);
+                this.sendMessage(userId, "A foto mais recente da construção.");
+
                 break;
             case "5":
-                this.sendMessage(userId,`As do Job.`);
+                reply = `As variações de custo ocorreram devido a fatores externos imprevistos, ajustes no projeto e mudanças nas especificações dos materiais. Analisamos cada variação cuidadosamente para minimizar o impacto no orçamento geral.`;
+                this.sendMessage(userId, reply);
                 break;
             case "6":
-                this.sendMessage(userId, `Não.`);
+                reply = `No momento, não há despesas adicionais previstas. Continuamos monitorando os custos de perto para garantir que não surjam surpresas.`;
+                this.sendMessage(userId, reply);
                 break;
             default:
-                this.sendMessage(userId, `Insira uma alternativa válida.`);
+                reply = `Insira uma alternativa válida. Por favor, escolha uma das opções fornecidas:
+                1- Quem realiza essas inspeções e aprovações?
+                2- Todas as regulamentações e normas estão sendo seguidas?
+                3- Qual é o procedimento para solicitar alterações? (Chamar atendente)
+                4- Estamos dentro do orçamento planejado?
+                5- Quais foram as variações de custo e por que ocorreram?
+                6- Há despesas adicionais previstas?`;
+                this.sendMessage(userId, reply);
                 break;
         }
-        
     }
-
-    
 
     sendWelcomeMessage(userId) {
         const displayName = this.getUserName(userId);
@@ -103,8 +111,6 @@ class MessageHandler {
         this.client.sendMessage(userId, message);
     }
 
-    
-
     async getUserNameFromCPF(cpf) {
         try {
             const { results } = await this.database.query('SELECT name FROM users WHERE cpf = ?', [cpf]);
@@ -114,8 +120,6 @@ class MessageHandler {
             throw error;
         }
     }
-
-    
 
     getUserName(userId) {
         const user = this.client.getContactById(userId);
@@ -132,11 +136,9 @@ class MessageHandler {
         });
     }
 
-    
-
     handleMessage(message) {
         const senderId = message.from;
-    
+
         if (!this.users.has(senderId)) {
             console.log('Usuário não recebeu as boas-vindas ainda. Tratando a mensagem como uma mensagem de boas-vindas.');
             this.handleWelcomeMessage(senderId);
@@ -150,14 +152,13 @@ class MessageHandler {
                     break;
                 case this.stages.THIRD:
                     console.log('Tratando mensagem para o terceiro estágio.');
-                    this.handleThirdStage(senderId, message.body);
+                    this.handleThirdStage(senderId, message);
                     break;
-                
                 default:
                     break;
             }
         }
-        
+
         this.logMessage(message);
     }
 }

@@ -1,6 +1,6 @@
 const Database = require('./database');
 const MessageHandler = require('./messageHandler');
-const { WhatsAppClient, LocalAuth } = require('./whatsappClient');
+const {Client, LocalAuth} = require('whatsapp-web.js'); 
 
 const dbConfig = {
   host: 'localhost',
@@ -10,18 +10,22 @@ const dbConfig = {
 };
 
 const db = new Database(dbConfig);
-const clientConfig = {
+
+const client = new Client({
   webVersion: '2.2409.2',
   webVersionCache: {
     type: 'remote',
     remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html'
   },
   authStrategy: new LocalAuth()
-};
-const client = new WhatsAppClient(clientConfig);
-const messageHandler = new MessageHandler(client.client, db);
+});
+const messageHandler = new MessageHandler(client, db);
 
 (async () => {
-  await db.connect();
-  client.initialize(messageHandler);
+  try {
+    await db.connect();
+    client.initialize(messageHandler);
+  } catch (error) {
+    console.error('Error initializing the client or connecting to the database:', error);
+  }
 })();

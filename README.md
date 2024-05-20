@@ -7,7 +7,7 @@ Clique no botão abaixo para instalar todas as dependências necessárias.
 
 Depois de instalar todas as dependências necessárias, execute o seguinte comando:
 
-`npm start`
+`node main.js`
 
 <hr>
 
